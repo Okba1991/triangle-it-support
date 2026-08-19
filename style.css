@@ -1,0 +1,384 @@
+:root {
+  --black: #0a0a0a;
+  --yellow: #FFD400;
+  --white: #ffffff;
+  --gray: #888;
+  --card: #ffffff;
+  --border: #e2e2e2;
+  --bg: #f4f4f4;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: #1a1a1a;
+}
+
+.hidden { display: none !important; }
+
+h1, h2, .logo { font-family: 'Anton', 'Inter', sans-serif; font-weight: 400; }
+
+/* ============================== Auth screen ============================== */
+
+#auth-screen {
+  min-height: 100vh;
+  background: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.logo {
+  color: var(--white);
+  font-size: 32px;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  margin: 0 0 24px;
+}
+
+.logo span {
+  display: block;
+  color: var(--yellow);
+  font-size: 20px;
+}
+
+.logo.small {
+  font-size: 18px;
+  margin: 0;
+}
+
+.logo.small span {
+  display: inline;
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: 16px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-tab-btn.active {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+#auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#auth-form input {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: var(--white);
+  font-size: 15px;
+}
+
+#auth-form input::placeholder { color: #777; }
+
+#auth-submit-btn {
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: var(--yellow);
+  color: var(--black);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.error { color: #ff5c5c; font-size: 13px; min-height: 16px; margin: 4px 0 0; }
+.hint { color: var(--yellow); font-size: 13px; margin: 4px 0 0; }
+
+.joke {
+  margin-top: 32px;
+  color: #666;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ============================== App shell ============================== */
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: var(--black);
+}
+
+#logout-btn {
+  border: 1px solid #444;
+  background: transparent;
+  color: var(--white);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#tabs {
+  display: flex;
+  background: #111;
+  border-bottom: 3px solid var(--yellow);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  color: var(--yellow);
+}
+
+main { max-width: 720px; margin: 0 auto; padding: 20px; padding-bottom: 60px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+h2 { font-size: 22px; margin: 0 0 16px; }
+
+/* ============================== Forms ============================== */
+
+.ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.ticket-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.ticket-form input,
+.ticket-form select,
+.ticket-form textarea {
+  font-family: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+.form-row {
+  display: flex;
+  gap: 14px;
+}
+
+.form-row label { flex: 1; }
+
+.ticket-form button {
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: var(--black);
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* ============================== Ticket lists ============================== */
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.filter-row select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.ticket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.ticket-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ticket-title { font-weight: 700; font-size: 15px; }
+
+.ticket-meta {
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 4px;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-open { background: #ffe8b3; color: #8a5d00; }
+.status-in-progress { background: #d6e8ff; color: #0b4f8a; }
+.status-resolved { background: #d7f5d7; color: #14722c; }
+
+.ticket-desc {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #333;
+  white-space: pre-wrap;
+}
+
+.ticket-solution {
+  margin-top: 10px;
+  font-size: 13px;
+  background: #fbf8e8;
+  border-left: 3px solid var(--yellow);
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+.admin-controls {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.admin-controls select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.admin-controls textarea {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.admin-controls button {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--black);
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.empty-hint {
+  color: var(--gray);
+  text-align: center;
+  padding: 30px 0;
+}
+
+/* ============================== Loading overlay ============================== */
+
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--black);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+}
+
+#loading-overlay h2 {
+  color: var(--white);
+  font-size: 26px;
+  margin: 20px 0 4px;
+  letter-spacing: 1px;
+}
+
+#loading-overlay p {
+  color: var(--yellow);
+  font-size: 14px;
+  margin: 0;
+}
+
+.spinner {
+  width: 56px;
+  height: 56px;
+  border: 5px solid #2a2a2a;
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

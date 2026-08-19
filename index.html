@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Triangle IT Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================== Login / Signup ============================== -->
+<div id="auth-screen" class="screen">
+  <div class="auth-box">
+    <h1 class="logo">TRIANGLE<span>IT SUPPORT</span></h1>
+
+    <div id="auth-tabs" class="auth-tabs">
+      <button class="auth-tab-btn active" data-mode="signin">Sign In</button>
+      <button class="auth-tab-btn" data-mode="signup">Sign Up</button>
+    </div>
+
+    <form id="auth-form">
+      <input type="email" id="auth-email" placeholder="Work email" required autocomplete="username">
+      <input type="password" id="auth-password" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" id="auth-submit-btn">Sign In</button>
+      <p id="auth-error" class="error"></p>
+      <p id="auth-hint" class="hint hidden">Account created — check your email if confirmation is required, then sign in.</p>
+    </form>
+
+    <p class="joke">Did you try turning it off and on again?</p>
+  </div>
+</div>
+
+<!-- ============================== Main App ============================== -->
+<div id="app-screen" class="screen hidden">
+  <header>
+    <h1 class="logo small">TRIANGLE<span>IT SUPPORT</span></h1>
+    <button id="logout-btn">Log out</button>
+  </header>
+
+  <nav id="tabs">
+    <button class="tab-btn active" data-tab="submit">Submit Ticket</button>
+    <button class="tab-btn" data-tab="mine">My Tickets</button>
+    <button class="tab-btn hidden" id="admin-tab-btn" data-tab="admin">All Tickets (Admin)</button>
+  </nav>
+
+  <main>
+    <!-- Submit a ticket -->
+    <section id="tab-submit" class="tab-panel active">
+      <h2>Submit a Ticket</h2>
+      <form id="submit-ticket-form" class="ticket-form">
+        <label>Title
+          <input type="text" id="new-title" required placeholder="Short summary of the issue">
+        </label>
+        <label>Description
+          <textarea id="new-description" rows="4" placeholder="Details, error messages, what you've already tried..."></textarea>
+        </label>
+        <div class="form-row">
+          <label>Category
+            <select id="new-category">
+              <option>Hardware</option>
+              <option>Software</option>
+              <option>Network</option>
+              <option>Account / Access</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>Office
+            <select id="new-office">
+              <option>Dubai</option>
+              <option>Egypt</option>
+              <option>Other</option>
+            </select>
+          </label>
+        </div>
+        <label>Department
+          <input type="text" id="new-department" placeholder="e.g. Sales, Finance, HR">
+        </label>
+        <button type="submit">Submit Ticket</button>
+      </form>
+    </section>
+
+    <!-- My tickets -->
+    <section id="tab-mine" class="tab-panel">
+      <h2>My Tickets</h2>
+      <ul id="mine-list" class="ticket-list"></ul>
+    </section>
+
+    <!-- Admin dashboard -->
+    <section id="tab-admin" class="tab-panel">
+      <h2>All Tickets</h2>
+      <div class="filter-row">
+        <select id="filter-status">
+          <option value="">All Statuses</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>Resolved</option>
+        </select>
+        <select id="filter-office">
+          <option value="">All Offices</option>
+          <option>Dubai</option>
+          <option>Egypt</option>
+          <option>Other</option>
+        </select>
+        <select id="filter-category">
+          <option value="">All Categories</option>
+          <option>Hardware</option>
+          <option>Software</option>
+          <option>Network</option>
+          <option>Account / Access</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <ul id="admin-list" class="ticket-list"></ul>
+    </section>
+  </main>
+</div>
+
+<!-- ============================== Loading overlay ============================== -->
+<div id="loading-overlay" class="hidden">
+  <div class="spinner"></div>
+  <h2>Generating Ticket</h2>
+  <p>Feel free to spin in your chair</p>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
