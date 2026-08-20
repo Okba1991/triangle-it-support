@@ -55,6 +55,12 @@ refreshDepartmentOptions()
 
 let currentUserId = null
 let isAdmin = false
+let profileEmailById = new Map()
+
+async function loadProfilesMap() {
+  const { data } = await supabase.from('profiles').select('id,email')
+  profileEmailById = new Map((data || []).map((p) => [p.id, p.email]))
+}
 
 function nowIso() {
   return new Date().toISOString()
@@ -152,6 +158,7 @@ async function enterApp() {
 
   loadMyTickets()
   if (isAdmin) {
+    await loadProfilesMap()
     loadAdminTickets()
     loadDashboard()
   }
@@ -261,9 +268,9 @@ async function loadDashboard() {
   document.getElementById('stat-in-progress').textContent = groups['In Progress'].length
   document.getElementById('stat-resolved').textContent = groups.Resolved.length
 
-  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false, openInAdminTab)
-  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false, openInAdminTab)
-  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false, openInAdminTab)
+  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false, true, openInAdminTab)
+  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false, true, openInAdminTab)
+  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false, true, openInAdminTab)
 }
 
 // Clicking a ticket on the Dashboard jumps to it on the editable "All
@@ -306,12 +313,12 @@ async function loadAdminTickets() {
     return
   }
 
-  renderTicketList(document.getElementById('admin-list'), data, true)
+  renderTicketList(document.getElementById('admin-list'), data, true, true)
 }
 
 // ============================== Rendering ================================
 
-function renderTicketList(listEl, tickets, adminMode, onCardClick) {
+function renderTicketList(listEl, tickets, adminMode, showRequester, onCardClick) {
   listEl.innerHTML = ''
 
   if (tickets.length === 0) {
@@ -345,6 +352,7 @@ function renderTicketList(listEl, tickets, adminMode, onCardClick) {
     meta.className = 'ticket-meta'
     meta.textContent = [
       formatDateTime(ticket.created_at),
+      showRequester ? (profileEmailById.get(ticket.submitted_by) || 'Unknown submitter') : null,
       ticket.company, ticket.department, ticket.category, ticket.office,
     ].filter(Boolean).join(' · ')
     left.appendChild(meta)
