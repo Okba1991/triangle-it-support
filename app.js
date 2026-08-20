@@ -66,9 +66,11 @@ function statusClass(status) {
   return 'status-' + (status || 'open').toLowerCase().replace(/\s+/g, '-')
 }
 
-// Same style as Spark's own format_ticket_ref() ("T#0007").
+// Deliberately different from Spark's own format_ticket_ref() ("T#0007")
+// so a ticket that started on the website is recognizable at a glance,
+// including later once it's pulled into Spark's Tickets tab (M5).
 function ticketRef(ticket) {
-  return 'T#' + String(ticket.ticket_number).padStart(4, '0')
+  return 'W-' + String(ticket.ticket_number).padStart(4, '0')
 }
 
 function formatDateTime(iso) {
