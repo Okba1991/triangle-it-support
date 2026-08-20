@@ -344,6 +344,31 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   cursor: pointer;
 }
 
+.attachments {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #444;
+}
+
+.attachment-row button {
+  border: none;
+  background: none;
+  color: #0b4f8a;
+  text-decoration: underline;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
 .empty-hint {
   color: var(--gray);
   text-align: center;

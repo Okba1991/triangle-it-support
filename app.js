@@ -28,7 +28,7 @@ const userIdentity = document.getElementById('user-identity')
 const DEPARTMENTS_BY_COMPANY = {
   TPS: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Project Management', 'Other'],
   TCT: ['Operations TCT', 'Traders TCT', 'Finance TCT', 'Risk TCT'],
-  Other: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Other'],
+  Other: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Project Management', 'Other'],
 }
 
 const newCompanySelect = document.getElementById('new-company')
@@ -175,19 +175,69 @@ document.getElementById('submit-ticket-form').addEventListener('submit', async (
     updated_at: nowIso(),
   }
 
+  const attachmentInput = document.getElementById('new-attachments')
+  const files = Array.from(attachmentInput.files)
+
   showLoading()
-  const { error } = await supabase.from('tickets').insert(fields)
-  hideLoading()
+
+  const { data: inserted, error } = await supabase.from('tickets').insert(fields).select().single()
 
   if (error) {
+    hideLoading()
     alert('Could not submit ticket: ' + error.message)
     return
   }
 
+  for (const file of files) {
+    const path = `${currentUserId}/${inserted.id}/${file.name}`
+    const { error: uploadError } = await supabase.storage.from('ticket-attachments').upload(path, file)
+    if (uploadError) console.error('Attachment upload failed:', uploadError)
+  }
+
+  hideLoading()
+
   e.target.reset()
+  refreshDepartmentOptions()
   document.querySelector('.tab-btn[data-tab="mine"]').click()
   loadMyTickets()
 })
+
+// ============================== Attachments ================================
+
+async function renderAttachments(container, ticket) {
+  const folder = `${ticket.submitted_by}/${ticket.id}`
+  const { data, error } = await supabase.storage.from('ticket-attachments').list(folder)
+
+  if (error || !data || data.length === 0) return
+
+  const wrap = document.createElement('div')
+  wrap.className = 'attachments'
+
+  data.forEach((file) => {
+    const row = document.createElement('div')
+    row.className = 'attachment-row'
+    row.textContent = '📎 ' + file.name
+
+    const downloadBtn = document.createElement('button')
+    downloadBtn.textContent = 'Download'
+    downloadBtn.addEventListener('click', async () => {
+      const { data: signed, error: signError } = await supabase.storage
+        .from('ticket-attachments')
+        .createSignedUrl(`${folder}/${file.name}`, 60)
+
+      if (signError) {
+        alert('Could not open file: ' + signError.message)
+        return
+      }
+      window.open(signed.signedUrl, '_blank')
+    })
+
+    row.appendChild(downloadBtn)
+    wrap.appendChild(row)
+  })
+
+  container.appendChild(wrap)
+}
 
 // ============================== My tickets ================================
 
@@ -288,6 +338,8 @@ function renderTicketList(listEl, tickets, adminMode) {
       sol.textContent = 'Solution: ' + ticket.solution
       li.appendChild(sol)
     }
+
+    renderAttachments(li, ticket)
 
     if (adminMode) {
       const controls = document.createElement('div')
