@@ -66,6 +66,17 @@ function statusClass(status) {
   return 'status-' + (status || 'open').toLowerCase().replace(/\s+/g, '-')
 }
 
+// Same style as Spark's own format_ticket_ref() ("T#0007").
+function ticketRef(ticket) {
+  return 'T#' + String(ticket.ticket_number).padStart(4, '0')
+}
+
+function formatDateTime(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+}
+
 // ============================== Auth ================================
 
 let authMode = 'signin'
@@ -308,12 +319,15 @@ function renderTicketList(listEl, tickets, adminMode) {
     const left = document.createElement('div')
     const title = document.createElement('div')
     title.className = 'ticket-title'
-    title.textContent = ticket.title
+    title.textContent = `${ticketRef(ticket)} — ${ticket.title}`
     left.appendChild(title)
 
     const meta = document.createElement('div')
     meta.className = 'ticket-meta'
-    meta.textContent = [ticket.company, ticket.department, ticket.category, ticket.office].filter(Boolean).join(' · ')
+    meta.textContent = [
+      formatDateTime(ticket.created_at),
+      ticket.company, ticket.department, ticket.category, ticket.office,
+    ].filter(Boolean).join(' · ')
     left.appendChild(meta)
 
     top.appendChild(left)
