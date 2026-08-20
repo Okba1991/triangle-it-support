@@ -365,6 +365,18 @@ refreshReportDepartmentOptions()
 
 const UNSET_LABEL = 'Unset'
 
+// Same palette as Spark's own ticket report (services/ticket_report.py).
+const STATUS_FILL_COLORS = { Open: '2F6FED', 'In Progress': 'D9A441', Resolved: '3ECF8E' }
+const HEADER_FONT = { bold: true, color: { rgb: 'FFFFFF' } }
+const HEADER_FILL = { fgColor: { rgb: '303030' } }
+const SECTION_FONT = { bold: true, sz: 12 }
+
+function styleCell(sheet, row, col, style) {
+  const ref = XLSX.utils.encode_cell({ r: row, c: col })
+  if (!sheet[ref]) sheet[ref] = { t: 's', v: '' }
+  sheet[ref].s = { ...(sheet[ref].s || {}), ...style }
+}
+
 function countBy(tickets, keyFn) {
   const counts = new Map()
   tickets.forEach((t) => {
@@ -431,25 +443,39 @@ document.getElementById('export-report-btn').addEventListener('click', async () 
     monthCounts.set(key, (monthCounts.get(key) || 0) + 1)
   })
 
+  const sectionStarts = []
+  let totalRow = 0
+
   const summaryRows = [
     ['Tickets Report Summary'],
     [`Date range (created): ${fromStr} to ${toStr}`],
     [`Filters: ${filtersText}`],
     [`Total tickets: ${tickets.length}`],
     [],
-    ['By Company'], ...countBy(tickets, (t) => t.company),
-    [],
-    ['By Department'], ...countBy(tickets, (t) => t.department),
-    [],
-    ['By Category'], ...countBy(tickets, (t) => t.category),
-    [],
-    ['By Status'], ...countBy(tickets, (t) => t.status),
-    [],
-    ['By Month'], ...[...monthCounts.entries()],
   ]
+  totalRow = 3
+
+  ;[
+    ['By Company', countBy(tickets, (t) => t.company)],
+    ['By Department', countBy(tickets, (t) => t.department)],
+    ['By Category', countBy(tickets, (t) => t.category)],
+    ['By Status', countBy(tickets, (t) => t.status)],
+    ['By Month', [...monthCounts.entries()]],
+  ].forEach(([label, items]) => {
+    sectionStarts.push(summaryRows.length)
+    summaryRows.push([label])
+    if (items.length === 0) summaryRows.push(['(none)'])
+    else items.forEach((row) => summaryRows.push(row))
+    summaryRows.push([])
+  })
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows)
   summarySheet['!cols'] = [{ wch: 26 }, { wch: 12 }]
+
+  styleCell(summarySheet, 0, 0, { font: { bold: true, sz: 14 } })
+  styleCell(summarySheet, totalRow, 0, { font: { bold: true } })
+  sectionStarts.forEach((row) => styleCell(summarySheet, row, 0, SECTION_FONT))
+
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary')
 
   // ---- Detailed sheet ----
@@ -478,6 +504,32 @@ document.getElementById('export-report-btn').addEventListener('click', async () 
     { wch: 12 }, { wch: 36 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 18 },
     { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 44 }, { wch: 44 },
   ]
+  detailSheet['!freeze'] = { xSplit: 0, ySplit: 1 }
+
+  const STATUS_COL = 3 // 0-indexed: Ref,Title,Submitted By,Status
+  const WRAP_COLS = [1, 11, 12] // Title, Description, Solution
+
+  detailHeader.forEach((_, col) => {
+    styleCell(detailSheet, 0, col, { font: HEADER_FONT, fill: { patternType: 'solid', ...HEADER_FILL } })
+  })
+
+  detailRows.forEach((row, rowIndex) => {
+    const r = rowIndex + 1
+    row.forEach((_, col) => {
+      styleCell(detailSheet, r, col, {
+        alignment: { vertical: 'top', wrapText: WRAP_COLS.includes(col) },
+      })
+    })
+
+    const fillColor = STATUS_FILL_COLORS[row[STATUS_COL]]
+    if (fillColor) {
+      styleCell(detailSheet, r, STATUS_COL, {
+        font: { color: { rgb: 'FFFFFF' }, bold: true },
+        fill: { patternType: 'solid', fgColor: { rgb: fillColor } },
+      })
+    }
+  })
+
   XLSX.utils.book_append_sheet(wb, detailSheet, 'Detailed')
 
   XLSX.writeFile(wb, `Tickets_Report_${fromStr}_to_${toStr}.xlsx`)
