@@ -70,7 +70,7 @@ function statusClass(status) {
 // so a ticket that started on the website is recognizable at a glance,
 // including later once it's pulled into Spark's Tickets tab (M5).
 function ticketRef(ticket) {
-  return 'W-' + String(ticket.ticket_number).padStart(4, '0')
+  return 'W-T#' + String(ticket.ticket_number).padStart(4, '0')
 }
 
 function formatDateTime(iso) {
