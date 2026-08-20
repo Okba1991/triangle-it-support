@@ -355,6 +355,21 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ticket-card.clickable {
+  cursor: pointer;
+}
+
+.ticket-card.clickable:hover {
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 1px var(--yellow);
+}
+
+.ticket-card.ticket-highlight {
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 2px var(--yellow);
 }
 
 .ticket-card-top {

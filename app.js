@@ -255,9 +255,29 @@ async function loadDashboard() {
   document.getElementById('stat-in-progress').textContent = groups['In Progress'].length
   document.getElementById('stat-resolved').textContent = groups.Resolved.length
 
-  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false)
-  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false)
-  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false)
+  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false, openInAdminTab)
+  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false, openInAdminTab)
+  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false, openInAdminTab)
+}
+
+// Clicking a ticket on the Dashboard jumps to it on the editable "All
+// Tickets" tab - reset any active filters first so it's guaranteed to
+// be in the (re-fetched) list, then scroll to and briefly flash it.
+async function openInAdminTab(ticket) {
+  document.querySelector('.tab-btn[data-tab="admin"]').click()
+
+  document.getElementById('filter-status').value = ''
+  document.getElementById('filter-company').value = ''
+  document.getElementById('filter-office').value = ''
+  document.getElementById('filter-category').value = ''
+  await loadAdminTickets()
+
+  const card = document.querySelector(`#admin-list [data-ticket-id="${ticket.id}"]`)
+  if (!card) return
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  card.classList.add('ticket-highlight')
+  setTimeout(() => card.classList.remove('ticket-highlight'), 1500)
 }
 
 async function loadAdminTickets() {
@@ -285,7 +305,7 @@ async function loadAdminTickets() {
 
 // ============================== Rendering ================================
 
-function renderTicketList(listEl, tickets, adminMode) {
+function renderTicketList(listEl, tickets, adminMode, onCardClick) {
   listEl.innerHTML = ''
 
   if (tickets.length === 0) {
@@ -299,6 +319,12 @@ function renderTicketList(listEl, tickets, adminMode) {
   tickets.forEach((ticket) => {
     const li = document.createElement('li')
     li.className = 'ticket-card'
+    li.dataset.ticketId = ticket.id
+
+    if (onCardClick) {
+      li.classList.add('clickable')
+      li.addEventListener('click', () => onCardClick(ticket))
+    }
 
     const top = document.createElement('div')
     top.className = 'ticket-card-top'
