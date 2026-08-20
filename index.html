@@ -48,6 +48,7 @@
   <nav id="tabs">
     <button class="tab-btn active" data-tab="submit">Submit Ticket</button>
     <button class="tab-btn" data-tab="mine">My Tickets</button>
+    <button class="tab-btn hidden" id="dashboard-tab-btn" data-tab="dashboard">Dashboard</button>
     <button class="tab-btn hidden" id="admin-tab-btn" data-tab="admin">All Tickets (Admin)</button>
   </nav>
 
@@ -97,23 +98,36 @@
     </section>
 
     <!-- Admin dashboard -->
-    <section id="tab-admin" class="tab-panel">
-      <h2>All Tickets</h2>
-
-      <div class="stat-row">
-        <div class="stat-tile stat-tile-warning">
-          <div class="stat-label">Open</div>
-          <div class="stat-value" id="stat-open">–</div>
+    <!-- Dashboard (admin) -->
+    <section id="tab-dashboard" class="tab-panel">
+      <h2>Dashboard</h2>
+      <div class="dashboard-columns">
+        <div class="dashboard-column">
+          <div class="stat-tile stat-tile-warning">
+            <div class="stat-label">Open</div>
+            <div class="stat-value" id="stat-open">–</div>
+          </div>
+          <ul class="ticket-list" id="dashboard-open-list"></ul>
         </div>
-        <div class="stat-tile stat-tile-info">
-          <div class="stat-label">In Progress</div>
-          <div class="stat-value" id="stat-in-progress">–</div>
+        <div class="dashboard-column">
+          <div class="stat-tile stat-tile-info">
+            <div class="stat-label">In Progress</div>
+            <div class="stat-value" id="stat-in-progress">–</div>
+          </div>
+          <ul class="ticket-list" id="dashboard-in-progress-list"></ul>
         </div>
-        <div class="stat-tile stat-tile-good">
-          <div class="stat-label">Resolved</div>
-          <div class="stat-value" id="stat-resolved">–</div>
+        <div class="dashboard-column">
+          <div class="stat-tile stat-tile-good">
+            <div class="stat-label">Resolved</div>
+            <div class="stat-value" id="stat-resolved">–</div>
+          </div>
+          <ul class="ticket-list" id="dashboard-resolved-list"></ul>
         </div>
       </div>
+    </section>
+
+    <section id="tab-admin" class="tab-panel">
+      <h2>All Tickets</h2>
 
       <details class="report-panel">
         <summary>Export Report (.xlsx)</summary>

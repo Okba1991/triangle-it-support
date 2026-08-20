@@ -257,10 +257,22 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   color: #555;
 }
 
-.stat-row {
+.dashboard-columns {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.dashboard-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-column .ticket-card {
+  padding: 12px 14px;
 }
 
 .stat-tile {

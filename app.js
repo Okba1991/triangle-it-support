@@ -19,6 +19,7 @@ const authHint = document.getElementById('auth-hint')
 const authSubmitBtn = document.getElementById('auth-submit-btn')
 const logoutBtn = document.getElementById('logout-btn')
 const adminTabBtn = document.getElementById('admin-tab-btn')
+const dashboardTabBtn = document.getElementById('dashboard-tab-btn')
 const loadingOverlay = document.getElementById('loading-overlay')
 const userIdentity = document.getElementById('user-identity')
 
@@ -144,6 +145,7 @@ async function enterApp() {
 
   isAdmin = !!(profile && profile.is_admin)
   adminTabBtn.classList.toggle('hidden', !isAdmin)
+  dashboardTabBtn.classList.toggle('hidden', !isAdmin)
 
   authScreen.classList.add('hidden')
   appScreen.classList.remove('hidden')
@@ -151,7 +153,7 @@ async function enterApp() {
   loadMyTickets()
   if (isAdmin) {
     loadAdminTickets()
-    loadAdminStats()
+    loadDashboard()
   }
 }
 
@@ -229,24 +231,33 @@ async function loadMyTickets() {
   document.getElementById(id).addEventListener('change', loadAdminTickets)
 })
 
-// Independent of the filters below - a stable overview, not something
-// that shifts when the list is narrowed (same reasoning Spark's own
-// Dashboard tab uses for its stat tiles).
-async function loadAdminStats() {
-  const { data, error } = await supabase.from('tickets').select('status')
+// Own tab (not the filtered "All Tickets" list below) - every ticket,
+// grouped by status, each group capped with its stat tile and the
+// tickets that belong to it right underneath (same shape as Spark's
+// own Dashboard tab: a stat card plus the items behind that number).
+async function loadDashboard() {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .order('updated_at', { ascending: false })
+
   if (error) {
     console.error(error)
     return
   }
 
-  const counts = { Open: 0, 'In Progress': 0, Resolved: 0 }
+  const groups = { Open: [], 'In Progress': [], Resolved: [] }
   data.forEach((t) => {
-    if (t.status in counts) counts[t.status] += 1
+    if (t.status in groups) groups[t.status].push(t)
   })
 
-  document.getElementById('stat-open').textContent = counts.Open
-  document.getElementById('stat-in-progress').textContent = counts['In Progress']
-  document.getElementById('stat-resolved').textContent = counts.Resolved
+  document.getElementById('stat-open').textContent = groups.Open.length
+  document.getElementById('stat-in-progress').textContent = groups['In Progress'].length
+  document.getElementById('stat-resolved').textContent = groups.Resolved.length
+
+  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false)
+  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false)
+  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false)
 }
 
 async function loadAdminTickets() {
@@ -568,5 +579,5 @@ async function updateTicket(id, status, solution) {
     return
   }
   loadAdminTickets()
-  loadAdminStats()
+  loadDashboard()
 }
