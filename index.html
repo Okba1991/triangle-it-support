@@ -33,7 +33,23 @@
       <p id="auth-hint" class="hint hidden">Account created — check your email if confirmation is required, then sign in.</p>
     </form>
 
+    <button type="button" id="forgot-password-btn" class="link-btn">Forgot password?</button>
+    <button type="button" id="back-to-signin-btn" class="link-btn hidden">&larr; Back to sign in</button>
+
     <p class="joke">Did you try turning it off and on again?</p>
+  </div>
+</div>
+
+<!-- ============================== Set new password (after email link) ============================== -->
+<div id="reset-password-screen" class="screen hidden">
+  <div class="auth-box">
+    <h1 class="logo">TRIANGLE<span>IT SUPPORT</span></h1>
+    <p class="joke" style="margin-top:0; margin-bottom:20px;">Set a new password</p>
+    <form id="new-password-form">
+      <input type="password" id="new-password-input" placeholder="New password" required minlength="6" autocomplete="new-password">
+      <button type="submit">Update Password</button>
+      <p id="reset-error" class="error"></p>
+    </form>
   </div>
 </div>
 

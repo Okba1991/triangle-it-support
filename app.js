@@ -90,6 +90,11 @@ function formatDateTime(iso) {
 
 let authMode = 'signin'
 
+const authTabs = document.getElementById('auth-tabs')
+const authPasswordInput = document.getElementById('auth-password')
+const forgotPasswordBtn = document.getElementById('forgot-password-btn')
+const backToSigninBtn = document.getElementById('back-to-signin-btn')
+
 document.querySelectorAll('.auth-tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.auth-tab-btn').forEach((b) => b.classList.remove('active'))
@@ -101,13 +106,55 @@ document.querySelectorAll('.auth-tab-btn').forEach((btn) => {
   })
 })
 
+function enterResetRequestMode() {
+  authMode = 'reset'
+  authTabs.classList.add('hidden')
+  authPasswordInput.classList.add('hidden')
+  authPasswordInput.required = false
+  authSubmitBtn.textContent = 'Send Reset Link'
+  forgotPasswordBtn.classList.add('hidden')
+  backToSigninBtn.classList.remove('hidden')
+  authError.textContent = ''
+  authHint.classList.add('hidden')
+}
+
+function exitResetRequestMode() {
+  authMode = 'signin'
+  authTabs.classList.remove('hidden')
+  authPasswordInput.classList.remove('hidden')
+  authPasswordInput.required = true
+  authSubmitBtn.textContent = 'Sign In'
+  forgotPasswordBtn.classList.remove('hidden')
+  backToSigninBtn.classList.add('hidden')
+  authError.textContent = ''
+  authHint.classList.add('hidden')
+  document.querySelectorAll('.auth-tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === 'signin'))
+}
+
+forgotPasswordBtn.addEventListener('click', enterResetRequestMode)
+backToSigninBtn.addEventListener('click', exitResetRequestMode)
+
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault()
   authError.textContent = ''
   authHint.classList.add('hidden')
 
   const email = document.getElementById('auth-email').value.trim()
-  const password = document.getElementById('auth-password').value
+
+  if (authMode === 'reset') {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    })
+    if (error) {
+      authError.textContent = error.message
+      return
+    }
+    authHint.textContent = 'Check your email for a password reset link.'
+    authHint.classList.remove('hidden')
+    return
+  }
+
+  const password = authPasswordInput.value
 
   if (authMode === 'signup') {
     const { error } = await supabase.auth.signUp({ email, password })
@@ -115,6 +162,7 @@ authForm.addEventListener('submit', async (e) => {
       authError.textContent = error.message
       return
     }
+    authHint.textContent = 'Account created — check your email if confirmation is required, then sign in.'
     authHint.classList.remove('hidden')
     return
   }
@@ -125,6 +173,35 @@ authForm.addEventListener('submit', async (e) => {
     return
   }
 
+  await enterApp()
+})
+
+// Supabase parses the recovery tokens out of the URL on page load (the
+// link from the reset email lands back here) and fires this event -
+// that's the signal to show the "set a new password" screen instead of
+// the normal login.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    authScreen.classList.add('hidden')
+    appScreen.classList.add('hidden')
+    document.getElementById('reset-password-screen').classList.remove('hidden')
+  }
+})
+
+document.getElementById('new-password-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+
+  const password = document.getElementById('new-password-input').value
+  const resetError = document.getElementById('reset-error')
+  resetError.textContent = ''
+
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) {
+    resetError.textContent = error.message
+    return
+  }
+
+  document.getElementById('reset-password-screen').classList.add('hidden')
   await enterApp()
 })
 
