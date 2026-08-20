@@ -336,6 +336,153 @@ function renderTicketList(listEl, tickets, adminMode) {
   })
 }
 
+// ============================== Report export ================================
+
+const reportCompanySelect = document.getElementById('report-company')
+const reportDepartmentSelect = document.getElementById('report-department')
+
+function refreshReportDepartmentOptions() {
+  const company = reportCompanySelect.value
+  const companies = company ? [company] : Object.keys(DEPARTMENTS_BY_COMPANY)
+
+  const options = []
+  companies.forEach((c) => {
+    DEPARTMENTS_BY_COMPANY[c].forEach((d) => {
+      if (!options.includes(d)) options.push(d)
+    })
+  })
+
+  reportDepartmentSelect.innerHTML = '<option value="">All Departments</option>'
+  options.forEach((d) => {
+    const opt = document.createElement('option')
+    opt.textContent = d
+    reportDepartmentSelect.appendChild(opt)
+  })
+}
+
+reportCompanySelect.addEventListener('change', refreshReportDepartmentOptions)
+refreshReportDepartmentOptions()
+
+const UNSET_LABEL = 'Unset'
+
+function countBy(tickets, keyFn) {
+  const counts = new Map()
+  tickets.forEach((t) => {
+    const key = keyFn(t) || UNSET_LABEL
+    counts.set(key, (counts.get(key) || 0) + 1)
+  })
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+}
+
+document.getElementById('export-report-btn').addEventListener('click', async () => {
+  const fromStr = document.getElementById('report-from').value
+  const toStr = document.getElementById('report-to').value
+
+  if (!fromStr || !toStr) {
+    alert('Pick both a From and To date.')
+    return
+  }
+  if (fromStr > toStr) {
+    alert('"From" must be on or before "To".')
+    return
+  }
+
+  const status = document.getElementById('report-status').value
+  const company = reportCompanySelect.value
+  const department = reportDepartmentSelect.value
+  const category = document.getElementById('report-category').value
+
+  let query = supabase
+    .from('tickets')
+    .select('*')
+    .gte('created_at', fromStr + 'T00:00:00')
+    .lte('created_at', toStr + 'T23:59:59')
+    .order('created_at', { ascending: true })
+
+  if (status) query = query.eq('status', status)
+  if (company) query = query.eq('company', company)
+  if (department) query = query.eq('department', department)
+  if (category) query = query.eq('category', category)
+
+  const { data: tickets, error } = await query
+  if (error) {
+    alert('Could not build report: ' + error.message)
+    return
+  }
+
+  const { data: profiles } = await supabase.from('profiles').select('id,email')
+  const emailById = new Map((profiles || []).map((p) => [p.id, p.email]))
+
+  const wb = XLSX.utils.book_new()
+
+  // ---- Summary sheet ----
+  const filtersText = [
+    status && `Status: ${status}`,
+    company && `Company: ${company}`,
+    department && `Department: ${department}`,
+    category && `Category: ${category}`,
+  ].filter(Boolean).join(' | ') || 'None'
+
+  const monthCounts = new Map()
+  tickets.forEach((t) => {
+    if (!t.created_at) return
+    const d = new Date(t.created_at)
+    const key = `${d.getMonth() + 1}/${d.getFullYear()}`
+    monthCounts.set(key, (monthCounts.get(key) || 0) + 1)
+  })
+
+  const summaryRows = [
+    ['Tickets Report Summary'],
+    [`Date range (created): ${fromStr} to ${toStr}`],
+    [`Filters: ${filtersText}`],
+    [`Total tickets: ${tickets.length}`],
+    [],
+    ['By Company'], ...countBy(tickets, (t) => t.company),
+    [],
+    ['By Department'], ...countBy(tickets, (t) => t.department),
+    [],
+    ['By Category'], ...countBy(tickets, (t) => t.category),
+    [],
+    ['By Status'], ...countBy(tickets, (t) => t.status),
+    [],
+    ['By Month'], ...[...monthCounts.entries()],
+  ]
+
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows)
+  summarySheet['!cols'] = [{ wch: 26 }, { wch: 12 }]
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary')
+
+  // ---- Detailed sheet ----
+  const detailHeader = [
+    'Ref', 'Title', 'Submitted By', 'Status', 'Company', 'Department',
+    'Category', 'Office', 'Created', 'Updated', 'Resolved', 'Description', 'Solution',
+  ]
+  const detailRows = tickets.map((t) => [
+    ticketRef(t),
+    t.title,
+    emailById.get(t.submitted_by) || '',
+    t.status,
+    t.company || '',
+    t.department || '',
+    t.category || '',
+    t.office || '',
+    formatDateTime(t.created_at),
+    formatDateTime(t.updated_at),
+    t.resolved_at ? formatDateTime(t.resolved_at) : '',
+    t.description || '',
+    t.solution || '',
+  ])
+
+  const detailSheet = XLSX.utils.aoa_to_sheet([detailHeader, ...detailRows])
+  detailSheet['!cols'] = [
+    { wch: 12 }, { wch: 36 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 18 },
+    { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 44 }, { wch: 44 },
+  ]
+  XLSX.utils.book_append_sheet(wb, detailSheet, 'Detailed')
+
+  XLSX.writeFile(wb, `Tickets_Report_${fromStr}_to_${toStr}.xlsx`)
+})
+
 async function updateTicket(id, status, solution) {
   const fields = { status, solution, updated_at: nowIso() }
   if (status === 'Resolved') fields.resolved_at = nowIso()

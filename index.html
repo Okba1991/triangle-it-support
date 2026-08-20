@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -95,6 +96,37 @@
     <!-- Admin dashboard -->
     <section id="tab-admin" class="tab-panel">
       <h2>All Tickets</h2>
+
+      <details class="report-panel">
+        <summary>Export Report (.xlsx)</summary>
+        <div class="filter-row">
+          <label>From <input type="date" id="report-from"></label>
+          <label>To <input type="date" id="report-to"></label>
+        </div>
+        <div class="filter-row">
+          <select id="report-status">
+            <option value="">All Statuses</option>
+            <option>Open</option>
+            <option>In Progress</option>
+            <option>Resolved</option>
+          </select>
+          <select id="report-company">
+            <option value="">All Companies</option>
+            <option>TPS</option>
+            <option>TCT</option>
+            <option>Other</option>
+          </select>
+          <select id="report-department"><option value="">All Departments</option></select>
+          <select id="report-category">
+            <option value="">All Categories</option>
+            <option>SAP</option>
+            <option>CTRM</option>
+            <option>IT</option>
+          </select>
+        </div>
+        <button id="export-report-btn" type="button">Export Report</button>
+      </details>
+
       <div class="filter-row">
         <select id="filter-status">
           <option value="">All Statuses</option>

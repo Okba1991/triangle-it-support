@@ -239,12 +239,57 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   margin-bottom: 16px;
 }
 
-.filter-row select {
+.filter-row select,
+.filter-row input {
   flex: 1;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
+}
+
+.filter-row label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+}
+
+.report-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.report-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.report-panel .filter-row {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.report-panel .filter-row + .filter-row {
+  margin-top: 10px;
+}
+
+#export-report-btn {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--black);
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .ticket-list {
