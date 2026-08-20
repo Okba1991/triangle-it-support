@@ -134,6 +134,14 @@ header {
   background: var(--black);
 }
 
+.user-identity {
+  flex: 1;
+  text-align: center;
+  color: var(--yellow);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 #logout-btn {
   border: 1px solid #444;
   background: transparent;

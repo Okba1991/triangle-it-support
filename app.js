@@ -20,6 +20,37 @@ const authSubmitBtn = document.getElementById('auth-submit-btn')
 const logoutBtn = document.getElementById('logout-btn')
 const adminTabBtn = document.getElementById('admin-tab-btn')
 const loadingOverlay = document.getElementById('loading-overlay')
+const userIdentity = document.getElementById('user-identity')
+
+// Mirrors Spark's own company -> department pick-lists (services/
+// settings_store.py, "companies" / "departments_by_company") so
+// tickets submitted here line up with the same taxonomy Spark uses.
+const DEPARTMENTS_BY_COMPANY = {
+  TPS: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Project Management', 'Other'],
+  TCT: ['Operations TCT', 'Traders TCT', 'Finance TCT', 'Risk TCT'],
+  Other: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Other'],
+}
+
+const newCompanySelect = document.getElementById('new-company')
+const newDepartmentSelect = document.getElementById('new-department')
+
+Object.keys(DEPARTMENTS_BY_COMPANY).forEach((company) => {
+  const opt = document.createElement('option')
+  opt.textContent = company
+  newCompanySelect.appendChild(opt)
+})
+
+function refreshDepartmentOptions() {
+  newDepartmentSelect.innerHTML = ''
+  DEPARTMENTS_BY_COMPANY[newCompanySelect.value].forEach((dept) => {
+    const opt = document.createElement('option')
+    opt.textContent = dept
+    newDepartmentSelect.appendChild(opt)
+  })
+}
+
+newCompanySelect.addEventListener('change', refreshDepartmentOptions)
+refreshDepartmentOptions()
 
 let currentUserId = null
 let isAdmin = false
@@ -90,6 +121,7 @@ async function enterApp() {
   if (!session) return
 
   currentUserId = session.user.id
+  userIdentity.textContent = session.user.email
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -133,9 +165,10 @@ document.getElementById('submit-ticket-form').addEventListener('submit', async (
   const fields = {
     title,
     description: document.getElementById('new-description').value.trim(),
+    company: newCompanySelect.value,
+    department: newDepartmentSelect.value,
     category: document.getElementById('new-category').value,
     office: document.getElementById('new-office').value,
-    department: document.getElementById('new-department').value.trim(),
     status: 'Open',
     solution: '',
     created_at: nowIso(),
@@ -175,7 +208,7 @@ async function loadMyTickets() {
 
 // ============================== Admin dashboard ================================
 
-;['filter-status', 'filter-office', 'filter-category'].forEach((id) => {
+;['filter-status', 'filter-company', 'filter-office', 'filter-category'].forEach((id) => {
   document.getElementById(id).addEventListener('change', loadAdminTickets)
 })
 
@@ -183,10 +216,12 @@ async function loadAdminTickets() {
   let query = supabase.from('tickets').select('*').order('updated_at', { ascending: false })
 
   const status = document.getElementById('filter-status').value
+  const company = document.getElementById('filter-company').value
   const office = document.getElementById('filter-office').value
   const category = document.getElementById('filter-category').value
 
   if (status) query = query.eq('status', status)
+  if (company) query = query.eq('company', company)
   if (office) query = query.eq('office', office)
   if (category) query = query.eq('category', category)
 
@@ -228,7 +263,7 @@ function renderTicketList(listEl, tickets, adminMode) {
 
     const meta = document.createElement('div')
     meta.className = 'ticket-meta'
-    meta.textContent = [ticket.category, ticket.office, ticket.department].filter(Boolean).join(' · ')
+    meta.textContent = [ticket.company, ticket.department, ticket.category, ticket.office].filter(Boolean).join(' · ')
     left.appendChild(meta)
 
     top.appendChild(left)

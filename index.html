@@ -37,6 +37,7 @@
 <div id="app-screen" class="screen hidden">
   <header>
     <h1 class="logo small">TRIANGLE<span>IT SUPPORT</span></h1>
+    <span id="user-identity" class="user-identity"></span>
     <button id="logout-btn">Log out</button>
   </header>
 
@@ -58,13 +59,19 @@
           <textarea id="new-description" rows="4" placeholder="Details, error messages, what you've already tried..."></textarea>
         </label>
         <div class="form-row">
+          <label>Company
+            <select id="new-company"></select>
+          </label>
+          <label>Department
+            <select id="new-department"></select>
+          </label>
+        </div>
+        <div class="form-row">
           <label>Category
             <select id="new-category">
-              <option>Hardware</option>
-              <option>Software</option>
-              <option>Network</option>
-              <option>Account / Access</option>
-              <option>Other</option>
+              <option>SAP</option>
+              <option>CTRM</option>
+              <option>IT</option>
             </select>
           </label>
           <label>Office
@@ -75,9 +82,6 @@
             </select>
           </label>
         </div>
-        <label>Department
-          <input type="text" id="new-department" placeholder="e.g. Sales, Finance, HR">
-        </label>
         <button type="submit">Submit Ticket</button>
       </form>
     </section>
@@ -98,6 +102,12 @@
           <option>In Progress</option>
           <option>Resolved</option>
         </select>
+        <select id="filter-company">
+          <option value="">All Companies</option>
+          <option>TPS</option>
+          <option>TCT</option>
+          <option>Other</option>
+        </select>
         <select id="filter-office">
           <option value="">All Offices</option>
           <option>Dubai</option>
@@ -106,11 +116,9 @@
         </select>
         <select id="filter-category">
           <option value="">All Categories</option>
-          <option>Hardware</option>
-          <option>Software</option>
-          <option>Network</option>
-          <option>Account / Access</option>
-          <option>Other</option>
+          <option>SAP</option>
+          <option>CTRM</option>
+          <option>IT</option>
         </select>
       </div>
       <ul id="admin-list" class="ticket-list"></ul>
