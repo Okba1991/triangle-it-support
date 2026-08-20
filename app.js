@@ -204,8 +204,14 @@ document.getElementById('submit-ticket-form').addEventListener('submit', async (
 
   e.target.reset()
   refreshDepartmentOptions()
-  document.querySelector('.tab-btn[data-tab="mine"]').click()
-  loadMyTickets()
+
+  const successOverlay = document.getElementById('success-overlay')
+  successOverlay.classList.remove('hidden')
+  setTimeout(() => {
+    successOverlay.classList.add('hidden')
+    document.querySelector('.tab-btn[data-tab="mine"]').click()
+    loadMyTickets()
+  }, 1600)
 })
 
 // ============================== My tickets ================================
