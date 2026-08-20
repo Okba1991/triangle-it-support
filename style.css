@@ -257,6 +257,43 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   color: #555;
 }
 
+.stat-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-tile {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid transparent;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+/* Reserved status hues (not the site's black/yellow brand accent) -
+   used only as a left-border mark, never as text color, so the low
+   contrast some of these have against a light card never matters. */
+.stat-tile-warning { border-left-color: #fab219; }
+.stat-tile-info { border-left-color: #2a78d6; }
+.stat-tile-good { border-left-color: #0ca30c; }
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-top: 4px;
+}
+
 .report-panel {
   background: var(--card);
   border: 1px solid var(--border);

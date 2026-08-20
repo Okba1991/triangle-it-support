@@ -149,7 +149,10 @@ async function enterApp() {
   appScreen.classList.remove('hidden')
 
   loadMyTickets()
-  if (isAdmin) loadAdminTickets()
+  if (isAdmin) {
+    loadAdminTickets()
+    loadAdminStats()
+  }
 }
 
 supabase.auth.getSession().then(({ data }) => {
@@ -225,6 +228,26 @@ async function loadMyTickets() {
 ;['filter-status', 'filter-company', 'filter-office', 'filter-category'].forEach((id) => {
   document.getElementById(id).addEventListener('change', loadAdminTickets)
 })
+
+// Independent of the filters below - a stable overview, not something
+// that shifts when the list is narrowed (same reasoning Spark's own
+// Dashboard tab uses for its stat tiles).
+async function loadAdminStats() {
+  const { data, error } = await supabase.from('tickets').select('status')
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  const counts = { Open: 0, 'In Progress': 0, Resolved: 0 }
+  data.forEach((t) => {
+    if (t.status in counts) counts[t.status] += 1
+  })
+
+  document.getElementById('stat-open').textContent = counts.Open
+  document.getElementById('stat-in-progress').textContent = counts['In Progress']
+  document.getElementById('stat-resolved').textContent = counts.Resolved
+}
 
 async function loadAdminTickets() {
   let query = supabase.from('tickets').select('*').order('updated_at', { ascending: false })
@@ -545,4 +568,5 @@ async function updateTicket(id, status, solution) {
     return
   }
   loadAdminTickets()
+  loadAdminStats()
 }
