@@ -1,24 +1,48 @@
 name: Keep Supabase awake
 
-# Supabase's free tier pauses a project after 7 days with zero database
-# activity. This pings it every 3 days - comfortably inside that window
-# - so the project never goes idle regardless of whether anyone's
-# actually using the site yet. No secrets needed: the publishable key
-# is meant to be public (same one already embedded in app.js), and RLS
-# means this request touches the real database but returns no rows,
-# which still counts as activity.
+# Two separate auto-pause risks, both closed by this one workflow:
+# 1. Supabase's free tier pauses a project after 7 days with zero
+#    database activity - the curl step below pings it every 3 days,
+#    comfortably inside that window.
+# 2. GitHub itself disables a *scheduled* workflow after 60 days with
+#    zero OTHER repo activity - a scheduled run's own execution does
+#    NOT count as "activity" for that rule, only real commits/pushes
+#    do. So the commit step below makes this workflow generate its own
+#    tiny, harmless commit every time it runs (every 3 days, far more
+#    often than the 60-day threshold), which resets that clock
+#    automatically - fully self-sustaining, no human ever needs to
+#    touch this again.
+#
+# No secrets needed for either step: the Supabase key is meant to be
+# public (same one already embedded in app.js), and the commit uses
+# GitHub Actions' own built-in repo-write token.
 
 on:
   schedule:
     - cron: '0 6 */3 * *'
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ping ticket_taxonomy table
         run: |
           curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
             "https://rtytofraoboczpelvpqi.supabase.co/rest/v1/ticket_taxonomy?select=id&limit=1" \
             -H "apikey: sb_publishable_IPyRE7yRASw-Mh_jVk5uXA_4ztmmS3H"
+
+      - name: Record a tiny commit so this workflow never gets auto-disabled
+        run: |
+          mkdir -p .github
+          echo "Last keep-alive ping: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > .github/keep-alive-log.txt
+          git config user.name "keep-alive-bot"
+          git config user.email "actions@github.com"
+          git add .github/keep-alive-log.txt
+          git commit -m "Keep-alive ping $(date -u +'%Y-%m-%d')" || echo "Nothing to commit"
+          git push
