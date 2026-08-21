@@ -11,6 +11,28 @@ const SUPABASE_KEY = 'sb_publishable_IPyRE7yRASw-Mh_jVk5uXA_4ztmmS3H'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
+// Supabase caps any single request at 1000 rows by default (PostgREST's
+// db-max-rows) regardless of how big the table gets - on-screen lists
+// page around that interactively (see loadAdminTickets/loadMyTickets:
+// "Load more" fetches the next PAGE_SIZE chunk). Places that need a
+// TRUE total (the report export, the Dashboard's counts/breakdown) use
+// fetchAllRows() below instead, which loops .range() calls until a
+// page comes back short, so nothing is ever silently truncated.
+const PAGE_SIZE = 100
+
+async function fetchAllRows(queryFactory) {
+  let allRows = []
+  let from = 0
+  while (true) {
+    const { data, error } = await queryFactory().range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    allRows = allRows.concat(data)
+    if (!data || data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+  return allRows
+}
+
 const authScreen = document.getElementById('auth-screen')
 const appScreen = document.getElementById('app-screen')
 const authForm = document.getElementById('auth-form')
@@ -364,38 +386,61 @@ document.getElementById('submit-ticket-form').addEventListener('submit', async (
 
 // ============================== My tickets ================================
 
-async function loadMyTickets() {
+let mineTickets = []
+let minePage = 0
+let mineHasMore = true
+
+async function loadMyTickets(reset = true) {
+  if (reset) {
+    mineTickets = []
+    minePage = 0
+    mineHasMore = true
+  }
+
   const { data, error } = await supabase
     .from('tickets')
     .select('*')
     .eq('submitted_by', currentUserId)
     .order('updated_at', { ascending: false })
+    .range(minePage * PAGE_SIZE, minePage * PAGE_SIZE + PAGE_SIZE - 1)
 
   if (error) {
     console.error(error)
     return
   }
 
-  renderTicketList(document.getElementById('mine-list'), data, false)
+  mineTickets = mineTickets.concat(data)
+  mineHasMore = data.length === PAGE_SIZE
+  minePage += 1
+
+  renderTicketList(document.getElementById('mine-list'), mineTickets, false)
+  document.getElementById('mine-load-more-btn').classList.toggle('hidden', !mineHasMore)
 }
+
+document.getElementById('mine-load-more-btn').addEventListener('click', () => loadMyTickets(false))
 
 // ============================== Admin dashboard ================================
 
 ;['filter-status', 'filter-company', 'filter-office', 'filter-category'].forEach((id) => {
-  document.getElementById(id).addEventListener('change', loadAdminTickets)
+  document.getElementById(id).addEventListener('change', () => loadAdminTickets(true))
 })
 
 // Own tab (not the filtered "All Tickets" list below) - every ticket,
 // grouped by status, each group capped with its stat tile and the
 // tickets that belong to it right underneath (same shape as Spark's
 // own Dashboard tab: a stat card plus the items behind that number).
-async function loadDashboard() {
-  const { data, error } = await supabase
-    .from('tickets')
-    .select('*')
-    .order('updated_at', { ascending: false })
+// Counts/breakdown need the TRUE total regardless of table size, so
+// this uses fetchAllRows() (loops past the 1000-row default cap) - the
+// per-status card lists are then capped to a preview so the DOM itself
+// stays small even once the real count is large; "All Tickets" is
+// where you reach the rest, via its own pagination + filters.
+const DASHBOARD_PREVIEW = 30
 
-  if (error) {
+async function loadDashboard() {
+  let data
+  try {
+    data = await fetchAllRows(() => supabase.from('tickets').select('*').order('updated_at', { ascending: false }))
+  } catch (error) {
     console.error(error)
     return
   }
@@ -409,11 +454,23 @@ async function loadDashboard() {
   document.getElementById('stat-in-progress').textContent = groups['In Progress'].length
   document.getElementById('stat-resolved').textContent = groups.Resolved.length
 
-  renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false, true, openInAdminTab)
-  renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false, true, openInAdminTab)
-  renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false, true, openInAdminTab)
+  renderDashboardColumn('dashboard-open-list', groups.Open)
+  renderDashboardColumn('dashboard-in-progress-list', groups['In Progress'])
+  renderDashboardColumn('dashboard-resolved-list', groups.Resolved)
 
   renderBreakdown(data)
+}
+
+function renderDashboardColumn(listId, tickets) {
+  const listEl = document.getElementById(listId)
+  renderTicketList(listEl, tickets.slice(0, DASHBOARD_PREVIEW), false, true, openInAdminTab)
+
+  if (tickets.length > DASHBOARD_PREVIEW) {
+    const note = document.createElement('li')
+    note.className = 'empty-hint'
+    note.textContent = `Showing ${DASHBOARD_PREVIEW} of ${tickets.length} — see All Tickets for the rest.`
+    listEl.appendChild(note)
+  }
 }
 
 // Same shape as the summary bar at the top of Spark's own Tickets tab
@@ -468,7 +525,17 @@ async function openInAdminTab(ticket) {
   setTimeout(() => card.classList.remove('ticket-highlight'), 1500)
 }
 
-async function loadAdminTickets() {
+let adminTickets = []
+let adminPage = 0
+let adminHasMore = true
+
+async function loadAdminTickets(reset = true) {
+  if (reset) {
+    adminTickets = []
+    adminPage = 0
+    adminHasMore = true
+  }
+
   let query = supabase.from('tickets').select('*').order('updated_at', { ascending: false })
 
   const status = document.getElementById('filter-status').value
@@ -481,6 +548,8 @@ async function loadAdminTickets() {
   if (office) query = query.eq('office', office)
   if (category) query = query.eq('category', category)
 
+  query = query.range(adminPage * PAGE_SIZE, adminPage * PAGE_SIZE + PAGE_SIZE - 1)
+
   const { data, error } = await query
 
   if (error) {
@@ -488,8 +557,15 @@ async function loadAdminTickets() {
     return
   }
 
-  renderTicketList(document.getElementById('admin-list'), data, true, true)
+  adminTickets = adminTickets.concat(data)
+  adminHasMore = data.length === PAGE_SIZE
+  adminPage += 1
+
+  renderTicketList(document.getElementById('admin-list'), adminTickets, true, true)
+  document.getElementById('admin-load-more-btn').classList.toggle('hidden', !adminHasMore)
 }
+
+document.getElementById('admin-load-more-btn').addEventListener('click', () => loadAdminTickets(false))
 
 // ============================== Rendering ================================
 
@@ -652,20 +728,24 @@ document.getElementById('export-report-btn').addEventListener('click', async () 
   const department = reportDepartmentSelect.value
   const category = document.getElementById('report-category').value
 
-  let query = supabase
-    .from('tickets')
-    .select('*')
-    .gte('created_at', fromStr + 'T00:00:00')
-    .lte('created_at', toStr + 'T23:59:59')
-    .order('created_at', { ascending: true })
+  let tickets
+  try {
+    tickets = await fetchAllRows(() => {
+      let query = supabase
+        .from('tickets')
+        .select('*')
+        .gte('created_at', fromStr + 'T00:00:00')
+        .lte('created_at', toStr + 'T23:59:59')
+        .order('created_at', { ascending: true })
 
-  if (status) query = query.eq('status', status)
-  if (company) query = query.eq('company', company)
-  if (department) query = query.eq('department', department)
-  if (category) query = query.eq('category', category)
+      if (status) query = query.eq('status', status)
+      if (company) query = query.eq('company', company)
+      if (department) query = query.eq('department', department)
+      if (category) query = query.eq('category', category)
 
-  const { data: tickets, error } = await query
-  if (error) {
+      return query
+    })
+  } catch (error) {
     alert('Could not build report: ' + error.message)
     return
   }

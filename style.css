@@ -573,6 +573,23 @@ h2 { font-size: 22px; margin: 0 0 16px; }
   cursor: pointer;
 }
 
+.load-more-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: #1a1a1a;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.load-more-btn:hover {
+  border-color: var(--yellow);
+}
+
 .empty-hint {
   color: var(--gray);
   text-align: center;
