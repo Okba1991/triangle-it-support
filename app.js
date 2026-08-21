@@ -425,50 +425,103 @@ document.getElementById('mine-load-more-btn').addEventListener('click', () => lo
   document.getElementById(id).addEventListener('change', () => loadAdminTickets(true))
 })
 
-// Own tab (not the filtered "All Tickets" list below) - every ticket,
-// grouped by status, each group capped with its stat tile and the
-// tickets that belong to it right underneath (same shape as Spark's
-// own Dashboard tab: a stat card plus the items behind that number).
-// Counts/breakdown need the TRUE total regardless of table size, so
-// this uses fetchAllRows() (loops past the 1000-row default cap) - the
-// per-status card lists are then capped to a preview so the DOM itself
-// stays small even once the real count is large; "All Tickets" is
-// where you reach the rest, via its own pagination + filters.
+// Own tab (not the filtered "All Tickets" list below) - a stat card
+// per status plus the tickets behind that number (same shape as
+// Spark's own Dashboard tab). Fetching every ticket just to count them
+// client-side was the slow path (confirmed by testing: ~41s at 9,000
+// tickets, one page awaited at a time) - counts now come from
+// Postgres's own exact-count instead (near-instant regardless of table
+// size), previews are small direct per-status queries, and only the
+// breakdown genuinely needs every row - fetched with many pages
+// in flight at once (bounded, see BREAKDOWN_CONCURRENCY) rather than
+// one at a time, since 100-way concurrency was already load-tested
+// clean (see the load-test conversation).
 const DASHBOARD_PREVIEW = 30
+const BREAKDOWN_CONCURRENCY = 50
 
-async function loadDashboard() {
-  let data
-  try {
-    data = await fetchAllRows(() => supabase.from('tickets').select('*').order('updated_at', { ascending: false }))
-  } catch (error) {
-    console.error(error)
-    return
-  }
-
-  const groups = { Open: [], 'In Progress': [], Resolved: [] }
-  data.forEach((t) => {
-    if (t.status in groups) groups[t.status].push(t)
-  })
-
-  document.getElementById('stat-open').textContent = groups.Open.length
-  document.getElementById('stat-in-progress').textContent = groups['In Progress'].length
-  document.getElementById('stat-resolved').textContent = groups.Resolved.length
-
-  renderDashboardColumn('dashboard-open-list', groups.Open)
-  renderDashboardColumn('dashboard-in-progress-list', groups['In Progress'])
-  renderDashboardColumn('dashboard-resolved-list', groups.Resolved)
-
-  renderBreakdown(data)
+async function countByStatus(status) {
+  const { count, error } = await supabase
+    .from('tickets')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', status)
+  if (error) throw error
+  return count || 0
 }
 
-function renderDashboardColumn(listId, tickets) {
-  const listEl = document.getElementById(listId)
-  renderTicketList(listEl, tickets.slice(0, DASHBOARD_PREVIEW), false, true, openInAdminTab)
+async function fetchStatusPreview(status) {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .eq('status', status)
+    .order('updated_at', { ascending: false })
+    .limit(DASHBOARD_PREVIEW)
+  if (error) throw error
+  return data
+}
 
-  if (tickets.length > DASHBOARD_PREVIEW) {
+// Only the columns renderBreakdown() actually groups by - keeps each
+// page's payload small on top of fetching pages concurrently.
+async function fetchAllSlimForBreakdown(totalCount) {
+  const columns = 'status,company,department,category,created_at'
+  const pageCount = Math.ceil(totalCount / PAGE_SIZE)
+  let allRows = []
+
+  for (let batchStart = 0; batchStart < pageCount; batchStart += BREAKDOWN_CONCURRENCY) {
+    const batchEnd = Math.min(batchStart + BREAKDOWN_CONCURRENCY, pageCount)
+    const pagePromises = []
+    for (let p = batchStart; p < batchEnd; p++) {
+      pagePromises.push(
+        supabase.from('tickets').select(columns).range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
+      )
+    }
+    const results = await Promise.all(pagePromises)
+    for (const { data, error } of results) {
+      if (error) throw error
+      allRows = allRows.concat(data)
+    }
+  }
+
+  return allRows
+}
+
+async function loadDashboard() {
+  try {
+    const [openCount, inProgressCount, resolvedCount] = await Promise.all([
+      countByStatus('Open'),
+      countByStatus('In Progress'),
+      countByStatus('Resolved'),
+    ])
+
+    document.getElementById('stat-open').textContent = openCount
+    document.getElementById('stat-in-progress').textContent = inProgressCount
+    document.getElementById('stat-resolved').textContent = resolvedCount
+
+    const [openPreview, inProgressPreview, resolvedPreview] = await Promise.all([
+      fetchStatusPreview('Open'),
+      fetchStatusPreview('In Progress'),
+      fetchStatusPreview('Resolved'),
+    ])
+
+    renderDashboardColumn('dashboard-open-list', openPreview, openCount)
+    renderDashboardColumn('dashboard-in-progress-list', inProgressPreview, inProgressCount)
+    renderDashboardColumn('dashboard-resolved-list', resolvedPreview, resolvedCount)
+
+    const totalCount = openCount + inProgressCount + resolvedCount
+    const slimRows = totalCount > 0 ? await fetchAllSlimForBreakdown(totalCount) : []
+    renderBreakdown(slimRows)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function renderDashboardColumn(listId, previewTickets, totalCount) {
+  const listEl = document.getElementById(listId)
+  renderTicketList(listEl, previewTickets, false, true, openInAdminTab)
+
+  if (totalCount > previewTickets.length) {
     const note = document.createElement('li')
     note.className = 'empty-hint'
-    note.textContent = `Showing ${DASHBOARD_PREVIEW} of ${tickets.length} — see All Tickets for the rest.`
+    note.textContent = `Showing ${previewTickets.length} of ${totalCount} — see All Tickets for the rest.`
     listEl.appendChild(note)
   }
 }
