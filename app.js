@@ -20,30 +20,17 @@ const authSubmitBtn = document.getElementById('auth-submit-btn')
 const logoutBtn = document.getElementById('logout-btn')
 const adminTabBtn = document.getElementById('admin-tab-btn')
 const dashboardTabBtn = document.getElementById('dashboard-tab-btn')
+const manageTabBtn = document.getElementById('manage-tab-btn')
 const loadingOverlay = document.getElementById('loading-overlay')
 const userIdentity = document.getElementById('user-identity')
-
-// Mirrors Spark's own company -> department pick-lists (services/
-// settings_store.py, "companies" / "departments_by_company") so
-// tickets submitted here line up with the same taxonomy Spark uses.
-const DEPARTMENTS_BY_COMPANY = {
-  TPS: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Project Management', 'Other'],
-  TCT: ['Operations TCT', 'Traders TCT', 'Finance TCT', 'Risk TCT'],
-  Other: ['Sales', 'Supply Chain', 'Estimation', 'Finance', 'Management', 'Project Management', 'Other'],
-}
 
 const newCompanySelect = document.getElementById('new-company')
 const newDepartmentSelect = document.getElementById('new-department')
 
-Object.keys(DEPARTMENTS_BY_COMPANY).forEach((company) => {
-  const opt = document.createElement('option')
-  opt.textContent = company
-  newCompanySelect.appendChild(opt)
-})
-
 function refreshDepartmentOptions() {
   newDepartmentSelect.innerHTML = ''
-  DEPARTMENTS_BY_COMPANY[newCompanySelect.value].forEach((dept) => {
+  const depts = taxonomy.departments_by_company[newCompanySelect.value] || []
+  depts.forEach((dept) => {
     const opt = document.createElement('option')
     opt.textContent = dept
     newDepartmentSelect.appendChild(opt)
@@ -51,11 +38,84 @@ function refreshDepartmentOptions() {
 }
 
 newCompanySelect.addEventListener('change', refreshDepartmentOptions)
-refreshDepartmentOptions()
 
 let currentUserId = null
 let isAdmin = false
 let profileEmailById = new Map()
+
+// Company/Department/Category/Office pick-lists - editable by the
+// admin from "Manage Lists" (see supabase/triangle_it_support_schema.sql's
+// ticket_taxonomy table), loaded fresh on every login rather than
+// hardcoded, so a list change is visible to everyone immediately.
+let taxonomy = { companies: [], departments_by_company: {}, categories: [], offices: [] }
+
+async function loadTaxonomy() {
+  const { data, error } = await supabase.from('ticket_taxonomy').select('*').eq('id', 1).single()
+  if (error) {
+    console.error(error)
+    return
+  }
+  taxonomy = {
+    companies: data.companies || [],
+    departments_by_company: data.departments_by_company || {},
+    categories: data.categories || [],
+    offices: data.offices || [],
+  }
+}
+
+async function saveTaxonomy() {
+  await supabase.from('ticket_taxonomy').update({
+    companies: taxonomy.companies,
+    departments_by_company: taxonomy.departments_by_company,
+    categories: taxonomy.categories,
+    offices: taxonomy.offices,
+    updated_at: nowIso(),
+  }).eq('id', 1)
+}
+
+function populatePlainSelect(selectEl, options) {
+  const current = selectEl.value
+  selectEl.innerHTML = ''
+  options.forEach((opt) => {
+    const o = document.createElement('option')
+    o.textContent = opt
+    selectEl.appendChild(o)
+  })
+  if (options.includes(current)) selectEl.value = current
+}
+
+function populateFilterSelect(id, options, allLabel) {
+  const el = document.getElementById(id)
+  const current = el.value
+  el.innerHTML = ''
+  const allOpt = document.createElement('option')
+  allOpt.value = ''
+  allOpt.textContent = allLabel
+  el.appendChild(allOpt)
+  options.forEach((opt) => {
+    const o = document.createElement('option')
+    o.textContent = opt
+    el.appendChild(o)
+  })
+  if ([...el.options].some((o) => o.value === current)) el.value = current
+}
+
+function refreshAllTaxonomyUI() {
+  populatePlainSelect(newCompanySelect, taxonomy.companies)
+  refreshDepartmentOptions()
+  populatePlainSelect(document.getElementById('new-category'), taxonomy.categories)
+  populatePlainSelect(document.getElementById('new-office'), taxonomy.offices)
+
+  populateFilterSelect('filter-company', taxonomy.companies, 'All Companies')
+  populateFilterSelect('filter-office', taxonomy.offices, 'All Offices')
+  populateFilterSelect('filter-category', taxonomy.categories, 'All Categories')
+
+  populateFilterSelect('report-company', taxonomy.companies, 'All Companies')
+  populateFilterSelect('report-category', taxonomy.categories, 'All Categories')
+  refreshReportDepartmentOptions()
+
+  if (isAdmin) renderManageLists()
+}
 
 async function loadProfilesMap() {
   const { data } = await supabase.from('profiles').select('id,email')
@@ -229,9 +289,13 @@ async function enterApp() {
   isAdmin = !!(profile && profile.is_admin)
   adminTabBtn.classList.toggle('hidden', !isAdmin)
   dashboardTabBtn.classList.toggle('hidden', !isAdmin)
+  manageTabBtn.classList.toggle('hidden', !isAdmin)
 
   authScreen.classList.add('hidden')
   appScreen.classList.remove('hidden')
+
+  await loadTaxonomy()
+  refreshAllTaxonomyUI()
 
   loadMyTickets()
   if (isAdmin) {
@@ -348,6 +412,40 @@ async function loadDashboard() {
   renderTicketList(document.getElementById('dashboard-open-list'), groups.Open, false, true, openInAdminTab)
   renderTicketList(document.getElementById('dashboard-in-progress-list'), groups['In Progress'], false, true, openInAdminTab)
   renderTicketList(document.getElementById('dashboard-resolved-list'), groups.Resolved, false, true, openInAdminTab)
+
+  renderBreakdown(data)
+}
+
+// Same shape as the summary bar at the top of Spark's own Tickets tab
+// (By Company / By Department / By Category / By Month counts) -
+// scoped to every ticket, not just the currently-visible dashboard
+// columns. countBy() is defined further down (Report export section)
+// but function declarations are hoisted, so it's available here too.
+function renderBreakdown(tickets) {
+  const el = document.getElementById('dashboard-breakdown')
+  el.innerHTML = ''
+
+  function line(label, counts) {
+    const p = document.createElement('div')
+    const strong = document.createElement('strong')
+    strong.textContent = label + ': '
+    p.appendChild(strong)
+    p.append(counts.length ? counts.map(([k, v]) => `${k}: ${v}`).join('   ') : '(none)')
+    el.appendChild(p)
+  }
+
+  line('By Company', countBy(tickets, (t) => t.company))
+  line('By Department', countBy(tickets, (t) => t.department))
+  line('By Category', countBy(tickets, (t) => t.category))
+
+  const monthCounts = new Map()
+  tickets.forEach((t) => {
+    if (!t.created_at) return
+    const d = new Date(t.created_at)
+    const key = `${d.getMonth() + 1}/${d.getFullYear()}`
+    monthCounts.set(key, (monthCounts.get(key) || 0) + 1)
+  })
+  line('By Month', [...monthCounts.entries()])
 }
 
 // Clicking a ticket on the Dashboard jumps to it on the editable "All
@@ -494,11 +592,11 @@ const reportDepartmentSelect = document.getElementById('report-department')
 
 function refreshReportDepartmentOptions() {
   const company = reportCompanySelect.value
-  const companies = company ? [company] : Object.keys(DEPARTMENTS_BY_COMPANY)
+  const companies = company ? [company] : taxonomy.companies
 
   const options = []
   companies.forEach((c) => {
-    DEPARTMENTS_BY_COMPANY[c].forEach((d) => {
+    ;(taxonomy.departments_by_company[c] || []).forEach((d) => {
       if (!options.includes(d)) options.push(d)
     })
   })
@@ -512,7 +610,6 @@ function refreshReportDepartmentOptions() {
 }
 
 reportCompanySelect.addEventListener('change', refreshReportDepartmentOptions)
-refreshReportDepartmentOptions()
 
 const UNSET_LABEL = 'Unset'
 
@@ -698,3 +795,112 @@ async function updateTicket(id, status, solution) {
   loadAdminTickets()
   loadDashboard()
 }
+
+// ============================== Manage Lists ================================
+
+const manageDeptCompanySelect = document.getElementById('manage-dept-company')
+
+function renderChipList(containerId, items, onRemove) {
+  const container = document.getElementById(containerId)
+  container.innerHTML = ''
+
+  if (items.length === 0) {
+    const empty = document.createElement('span')
+    empty.className = 'hint-text'
+    empty.textContent = 'None yet.'
+    container.appendChild(empty)
+    return
+  }
+
+  items.forEach((item) => {
+    const chip = document.createElement('span')
+    chip.className = 'chip'
+    chip.append(document.createTextNode(item))
+
+    const removeBtn = document.createElement('button')
+    removeBtn.type = 'button'
+    removeBtn.textContent = '×'
+    removeBtn.title = 'Remove'
+    removeBtn.addEventListener('click', () => onRemove(item))
+    chip.appendChild(removeBtn)
+
+    container.appendChild(chip)
+  })
+}
+
+function renderDepartmentChips() {
+  const company = manageDeptCompanySelect.value
+  const depts = taxonomy.departments_by_company[company] || []
+  renderChipList('manage-departments', depts, (name) => removeDepartment(company, name))
+}
+
+function renderManageLists() {
+  renderChipList('manage-companies', taxonomy.companies, removeCompany)
+  renderChipList('manage-categories', taxonomy.categories, (name) => removeSimple('categories', name))
+  renderChipList('manage-offices', taxonomy.offices, (name) => removeSimple('offices', name))
+
+  populatePlainSelect(manageDeptCompanySelect, taxonomy.companies)
+  renderDepartmentChips()
+}
+
+manageDeptCompanySelect.addEventListener('change', renderDepartmentChips)
+
+async function removeSimple(listKey, value) {
+  taxonomy[listKey] = taxonomy[listKey].filter((v) => v !== value)
+  await saveTaxonomy()
+  refreshAllTaxonomyUI()
+}
+
+async function removeCompany(name) {
+  taxonomy.companies = taxonomy.companies.filter((c) => c !== name)
+  delete taxonomy.departments_by_company[name]
+  await saveTaxonomy()
+  refreshAllTaxonomyUI()
+}
+
+async function removeDepartment(company, name) {
+  taxonomy.departments_by_company[company] = (taxonomy.departments_by_company[company] || []).filter((d) => d !== name)
+  await saveTaxonomy()
+  refreshAllTaxonomyUI()
+}
+
+function wireAddForm(formId, listKey) {
+  document.getElementById(formId).addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const input = e.target.querySelector('input')
+    const value = input.value.trim()
+    if (!value || taxonomy[listKey].includes(value)) return
+
+    taxonomy[listKey].push(value)
+    if (listKey === 'companies' && !taxonomy.departments_by_company[value]) {
+      taxonomy.departments_by_company[value] = []
+    }
+
+    input.value = ''
+    await saveTaxonomy()
+    refreshAllTaxonomyUI()
+  })
+}
+
+wireAddForm('add-company-form', 'companies')
+wireAddForm('add-category-form', 'categories')
+wireAddForm('add-office-form', 'offices')
+
+document.getElementById('add-department-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+
+  const company = manageDeptCompanySelect.value
+  if (!company) return
+
+  const input = e.target.querySelector('input')
+  const value = input.value.trim()
+  if (!value) return
+
+  if (!taxonomy.departments_by_company[company]) taxonomy.departments_by_company[company] = []
+  if (taxonomy.departments_by_company[company].includes(value)) return
+
+  taxonomy.departments_by_company[company].push(value)
+  input.value = ''
+  await saveTaxonomy()
+  refreshAllTaxonomyUI()
+})
