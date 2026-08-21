@@ -1,0 +1,24 @@
+name: Keep Supabase awake
+
+# Supabase's free tier pauses a project after 7 days with zero database
+# activity. This pings it every 3 days - comfortably inside that window
+# - so the project never goes idle regardless of whether anyone's
+# actually using the site yet. No secrets needed: the publishable key
+# is meant to be public (same one already embedded in app.js), and RLS
+# means this request touches the real database but returns no rows,
+# which still counts as activity.
+
+on:
+  schedule:
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping ticket_taxonomy table
+        run: |
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+            "https://rtytofraoboczpelvpqi.supabase.co/rest/v1/ticket_taxonomy?select=id&limit=1" \
+            -H "apikey: sb_publishable_IPyRE7yRASw-Mh_jVk5uXA_4ztmmS3H"
