@@ -44,5 +44,11 @@ jobs:
           git config user.name "keep-alive-bot"
           git config user.email "actions@github.com"
           git add .github/keep-alive-log.txt
-          git commit -m "Keep-alive ping $(date -u +'%Y-%m-%d')" || echo "Nothing to commit"
+          # [skip netlify] stops this automated commit from also
+          # triggering a Netlify rebuild every 3 days forever - it
+          # still resets GitHub's own 60-day scheduled-workflow clock
+          # (that only needs a real commit to exist, not a Netlify
+          # build), it just no longer spends Netlify build credits on
+          # a commit that never touches the site's actual code.
+          git commit -m "Keep-alive ping $(date -u +'%Y-%m-%d') [skip netlify]" || echo "Nothing to commit"
           git push
